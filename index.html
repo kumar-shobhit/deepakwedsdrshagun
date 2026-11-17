@@ -410,10 +410,10 @@ footer .tag{font-family:var(--caps);font-weight:600;font-size:1.1rem;letter-spac
   </footer>
 </main>
 
-<button class="music" id="music" aria-label="Play music" aria-pressed="false">
+<button class="music" id="music" aria-label="Turn music off" aria-pressed="true">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="music-icon"></svg>
 </button>
-<audio id="background-music" src="audio/song.mp3" preload="auto" loop></audio>
+<audio id="background-music" src="audio/song.mp3" preload="auto" autoplay loop></audio>
 <canvas id="petals" aria-hidden="true"></canvas>
 
 <script>(function(){
@@ -449,26 +449,44 @@ footer .tag{font-family:var(--caps);font-weight:600;font-size:1.1rem;letter-spac
   const btn=$("#music"), icon=$("#music-icon");
   const ICON_ON='<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>';
   const ICON_OFF='<path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/>';
-  icon.innerHTML=ICON_OFF;
+  icon.innerHTML=ICON_ON;
   const music=$("#background-music");
   music.volume=.9;
   let playing=false;
+  let musicEnabled=true;
+  function updateMusicControl(){
+    btn.setAttribute("aria-pressed",String(musicEnabled));
+    btn.setAttribute("aria-label",musicEnabled?"Turn music off":"Turn music on");
+    icon.innerHTML=musicEnabled?ICON_ON:ICON_OFF;
+  }
+  updateMusicControl();
   async function startMusic(){
     try{
       await music.play();
       playing=true;
-      btn.setAttribute("aria-pressed","true"); btn.setAttribute("aria-label","Pause music"); icon.innerHTML=ICON_ON;
     }catch(error){
       playing=false;
-      btn.setAttribute("aria-pressed","false"); btn.setAttribute("aria-label","Play music"); icon.innerHTML=ICON_OFF;
+      updateMusicControl();
       console.error("Unable to play the wedding song.",error);
     }
   }
   function stopMusic(){
-    playing=false; music.pause();
-    btn.setAttribute("aria-pressed","false"); btn.setAttribute("aria-label","Play music"); icon.innerHTML=ICON_OFF;
+    musicEnabled=false; playing=false; music.pause();
+    updateMusicControl();
   }
-  btn.addEventListener("click",()=> playing?stopMusic():startMusic());
+  btn.addEventListener("click",()=> {
+    if(musicEnabled&&playing) stopMusic();
+    else { musicEnabled=true; updateMusicControl(); startMusic(); }
+  });
+  function resumeMusicAfterInteraction(event){
+    if(!musicEnabled||playing||btn.contains(event.target)) return;
+    document.removeEventListener("pointerdown",resumeMusicAfterInteraction);
+    document.removeEventListener("keydown",resumeMusicAfterInteraction);
+    startMusic();
+  }
+  document.addEventListener("pointerdown",resumeMusicAfterInteraction);
+  document.addEventListener("keydown",resumeMusicAfterInteraction);
+  startMusic();
 
   /* ================= Scroll: fade-ins and parallax ================= */
   if(!reduce && "IntersectionObserver" in window){
